@@ -1,0 +1,544 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import seaborn as sns
+import datetime as dt
+import pylab as pl
+%matplotlib inline
+
+# Loading the dataset
+
+Movies = pd.read_csv("/content/drive/MyDrive/imdb_movies.csv")
+Movies.head()
+
+Movies.tail()
+
+Movies.rename(columns = {'DATE_X':'DATE', 'BUDGET_X': 'BUDGET'}, inplace = True)
+
+Movies.columns = [x.upper() for x in Movies.columns]
+
+Movies.describe().transpose()
+
+# statistical summary of all numeric-typed (int, float) columns
+print("\nDataset Summary:")
+Movies.describe()
+
+# statistical summary of all columns
+print("\nDataset Summary:")
+Movies.describe(include="all")
+
+# get the list of column headers
+print("\nColumn Names:")
+Movies.columns
+
+# Number of Rows
+print("Number of rows",Movies.shape[0])
+
+# Number of colums
+print("number of colums",Movies.shape[1])
+
+Movies.duplicated()
+
+# to find duplicate values in  "orig_title"column
+
+duplicate=Movies[Movies.duplicated("ORIG_TITLE")]
+duplicate["ORIG_TITLE"].value_counts()
+
+# drop that duplicate values row
+Movies.drop_duplicates(subset="ORIG_TITLE",inplace=True)
+
+**Cleaning the Dataframe**
+
+**1. Identifying Missing Values**
+
+# Two methods to detect missing data are df.isnull() or df.isnotnull()
+missing_data= Movies.isnull()
+missing_data.head()
+
+Movies.isna().sum()
+
+Movies.info()
+
+# the column "crew" is not required for any analysis, so we drop it.
+Movies.drop(['CREW'], axis=1, inplace=True)
+
+# the column "genre" has some missing values which can be replaced by frequency
+
+# see which values are present in column "genre"
+Movies['GENRE'].value_counts()
+
+# another method to check the most common value in the column is by using ".idxmax()"
+Movies['GENRE'].value_counts().idxmax()
+
+Movies.columns
+
+Movies.COUNTRY.unique()
+
+Movies.dropna(inplace=True)
+
+Movies.shape
+
+Movies.describe().T.style.format('{:,.2F}')
+
+top_10_revenues = Movies.sort_values("REVENUE",ascending=True)[-10:]
+top_10_revenues
+
+Movies.sort_values(by=['ORIG_TITLE','COUNTRY', 'ORIG_LANG'], ascending=[True, True, True])
+Movies[['ORIG_TITLE','COUNTRY', 'ORIG_LANG']]
+
+Movies['ORIG_LANG'].value_counts()
+
+Movies['COUNTRY'].value_counts()
+
+Movies['REVENUE'].nlargest()
+
+Movies['REVENUE'].nsmallest()
+
+country_grp = Movies.groupby(['COUNTRY'])
+
+country_grp.get_group('US')
+
+country_grp['ORIG_LANG'].value_counts().loc['US']
+
+country_grp['ORIG_LANG'].apply(lambda x: x.str.contains('English').sum())
+
+country_respondents = Movies['COUNTRY'].value_counts()
+country_respondents
+
+country_on_la = country_grp['ORIG_LANG'].apply(lambda x: x.str.contains('English').sum())
+country_on_la
+
+python_df = pd.concat([country_respondents, country_on_la],axis='columns', sort=True)
+python_df.sort_values(by='COUNTRY', ascending=False, inplace=True)
+python_df
+
+# Now let us check which are the top 10 movies which generated highest revenue
+
+# create a data frame, sort and format values
+data = pd.DataFrame(Movies, columns=['REVENUE', 'NAMES'])
+data_sorted = data.sort_values(by='REVENUE', ascending=False)
+data_sorted['REVENUE'] = data_sorted['REVENUE'] / 1000000
+pd.options.display.float_format = '{:,.0f}'.format
+data_sorted.set_index('NAMES', inplace=True)
+ranking_rev = data_sorted.head(10)
+ranking_rev
+
+top_10_revenue = Movies.sort_values('REVENUE', ascending=True)[-10:]
+top_10_revenue
+
+**Data Vizualisation**
+
+# Variables
+index = ranking_rev.index
+values = ranking_rev['REVENUE']
+plot_title = 'Top 10 movies by revenue, USD million'
+title_size = 18
+subtitle = 'Source: Kaggle / IMDB Movies'
+x_label = 'REVENUE, USD million'
+filename = 'barh-plot'
+
+# draw a figure with a subplot. We’re using the viridis color scheme to create gradients later.
+fig, ax = plt.subplots(figsize=(10,6), facecolor=(.94, .94, .94))
+mpl.pyplot.viridis()
+
+# create bars
+bar = ax.barh(index, values, color='darkseagreen')
+plt.tight_layout()
+ax.xaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+
+# set title, its font size, and position
+title = plt.title(plot_title, pad=20, fontsize=title_size)
+title.set_position([.33, 1])
+plt.subplots_adjust(top=0.9, bottom=0.1)
+
+# create bar labels/annotations
+rects = ax.patches
+# Place a label for each bar
+for rect in rects:
+    # Get X and Y placement of label from rect
+    x_value = rect.get_width()
+    y_value = rect.get_y() + rect.get_height() / 2
+
+    # Number of points between bar and label; change to your liking
+    space = -30
+    # Vertical alignment for positive values
+    ha = 'left'
+
+    # If value of bar is negative: place label to the left of the bar
+    if x_value < 0:
+        # Invert space to place label to the left
+        space *= -1
+        # Horizontally align label to the right
+        ha = 'right'
+
+    # Use X value as label and format number
+    label = '{:,.0f}'.format(x_value)
+
+    # Create annotation
+    plt.annotate(
+        label,                      # Use `label` as label
+        (x_value, y_value),         # Place label at bar end
+        xytext=(space, 0),          # Horizontally shift label by `space`
+        textcoords='offset points', # Interpret `xytext` as offset in points
+        va='center',                # Vertically center label
+        ha=ha,                      # Horizontally align label differently for positive and negative values
+        color = 'black')            # Change label color to white
+
+   # Set subtitle
+    tfrom = ax.get_xaxis_transform()
+    ann = ax.annotate(subtitle, xy=(5, 1), xycoords=tfrom, bbox=dict(boxstyle='square,pad=1.3', fc='#f0f0f0', ec='none'))
+
+   #Set x-label
+    ax.set_xlabel(x_label, color='black')
+
+# Now let us check which are the top 10 movies which generated highest revenue
+
+# create a data frame, sort and format values
+
+revenue_by_country =Movies.loc[:, ['COUNTRY', 'REVENUE']]
+revenue_by_country = revenue_by_country.groupby('COUNTRY').sum()
+top_5_countries = revenue_by_country.nlargest(5, 'REVENUE')/ 1000000
+pd.options.display.float_format = '{:,.0f}'.format
+
+# Variables
+index = top_5_countries.index
+values = top_5_countries['REVENUE']
+plot_title = 'Top 05 Countries by revenue, USD million'
+title_size = 18
+subtitle = 'Source: Kaggle / IMDB Movies'
+x_label = 'Revenue, USD million'
+
+# Create a bar plot
+
+fig, ax = plt.subplots(figsize=(15,6), facecolor=(.94, .94, .94))
+mpl.pyplot.viridis()
+
+# create bars
+bar = ax.barh(index, values, color='darkseagreen')
+plt.tight_layout()
+ax.xaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+
+# set title, its font size, and position
+title = plt.title(plot_title, pad=20, fontsize=title_size)
+title.set_position([.33, 1])
+plt.subplots_adjust(top=0.9, bottom=0.1)
+
+# create bar labels/annotations
+rects = ax.patches
+# Place a label for each bar
+for rect in rects:
+    # Get X and Y placement of label from rect
+    x_value = rect.get_width()
+    y_value = rect.get_y() + rect.get_height() / 2
+
+    # Number of points between bar and label; change to your liking
+    space = -25
+    # Vertical alignment for positive values
+    ha = 'left'
+
+    # If value of bar is negative: place label to the left of the bar
+    if x_value < 0:
+        # Invert space to place label to the left
+        space *= -1
+        # Horizontally align label to the right
+        ha = 'right'
+
+    # Use X value as label and format number
+    label = '{:,.0f}'.format(x_value)
+
+    # Create annotation
+    plt.annotate(
+        label,                      # Use `label` as label
+        (x_value, y_value),         # Place label at bar end
+        xytext=(space, 0),          # Horizontally shift label by `space`
+        textcoords='offset points', # Interpret `xytext` as offset in points
+        va='center',                # Vertically center label
+        ha='center',                      # Horizontally align label differently for positive and negative values
+        color = 'black')            # Change label color to white
+
+# Show the plot
+plt.show()
+
+# Now we compare the Budget against the Revenue generated for the Top 10 movies with highest revenue
+
+# Sort the DataFrame by revenue in descending order and select the top 10 movies
+top_10_movies = Movies.sort_values('REVENUE', ascending=False).head(10)
+top_10_movies.set_index('NAMES', inplace=True)
+top_10_movies
+
+# now we plot a horizontal bar chart comparing the revenue generated against the budget for the top 10 movies
+
+ax = top_10_movies.plot.barh(width=0.8, color=['darkseagreen', 'deepskyblue'])
+
+custom_legend = ['BUDGET', 'REVENUE']
+ax.legend(custom_legend)
+ax.set_xlabel("Amount in Millions")
+ax.set_ylabel("Top 10 Movies")
+ax.set_title("Budget against Revenue Generated for Top 10 Movies")
+
+# now we check which are the top 5 languages of the movies which generate maximum revenue
+
+rev_by_lang = Movies.loc[:, ['ORIG_LANG', 'REVENUE']]
+rev_by_lang = rev_by_lang.groupby('ORIG_LANG').sum()
+top_5_lang = rev_by_lang.nlargest(5, 'REVENUE')
+top_5_lang
+
+plt.figure(figsize=(15,6))
+# Create a bar plot
+plt.barh(top_5_lang.index, top_5_lang['REVENUE']/1000000000, color='darkseagreen')
+plt.title('Top 5 Languages of the Movies Generating Maximum Revenue', fontsize=20)
+
+# Label the axes
+plt.ylabel('LANGUAGE', fontsize=15)
+plt.xlabel('Revenue (in billions)', fontsize=15)
+
+# Show the plot
+plt.show()
+
+country_count = Movies['COUNTRY'].value_counts().head(10)
+country_count
+
+plt.bar(country_count.index, height=country_count)
+plt.show()
+
+genre_count= Movies['GENRE'].value_counts().head(10)
+genre_count
+
+plt.figure(figsize=(15,6))
+# Create a bar plot
+plt.bar(top_10_revenues['NAMES'], top_10_revenues['REVENUE'])
+
+# Set the x-axis labels
+plt.xticks(rotation=60)
+
+plt.title('Top 10 Movie Revenues')
+# Label the axes
+plt.xlabel('Movie Title')
+plt.ylabel('Revenue')
+
+# Show the plot
+plt.show()
+
+revenue_by_country = Movies.loc[:, ['COUNTRY', 'REVENUE']]
+revenue_by_country = revenue_by_country.groupby('COUNTRY').sum()
+top_5_countries = revenue_by_country.nlargest(5, 'REVENUE')
+
+plt.figure(figsize=(15,6))
+# Create a bar plot
+plt.bar(top_5_countries.index, top_5_countries['REVENUE']/1000000000)
+plt.title('Top 5 Countries with Highest Revenue')
+
+# Set the x-axis labels
+plt.xticks(rotation=60)
+
+# Label the axes
+plt.xlabel('Country')
+plt.ylabel('Revenue in billions')
+
+# Show the plot
+plt.show()
+
+# now we check which is the most common language in which the movies are produced
+
+orig_lang_count= Movies['ORIG_LANG'].value_counts().head(10)
+orig_lang_count
+
+revenue_by_lang = Movies.loc[:, ['ORIG_LANG', 'REVENUE']]
+revenue_by_lang = revenue_by_lang.groupby('ORIG_LANG').sum()
+top_5_langs = revenue_by_lang.nlargest(5, 'REVENUE')
+
+plt.figure(figsize=(15,6))
+# Create a bar plot
+plt.bar(top_5_langs.index, top_5_langs['REVENUE']/1000000000)
+plt.title('Top 5 Language Spoken Movies')
+
+# Set the x-axis labels
+plt.xticks(rotation=60)
+
+# Label the axes
+plt.xlabel('Country')
+plt.ylabel('Revenue (in billions)')
+
+# Show the plot
+plt.show()
+
+y= Movies["ORIG_LANG"].value_counts().index.tolist()[0:9]
+y
+
+x=Movies["ORIG_LANG"].value_counts().unique()[0:9]
+x
+
+# plot a pie chart
+plt.figure(figsize=(8,8))
+plt.pie(orig_lang_count, labels=orig_lang_count.index, autopct="%0.01f%%")
+plt.title('Top 10 Languages in which the movies are Produced')
+plt.show()
+
+v= Movies["GENRE"].value_counts().index.tolist()[0:9]
+v
+
+w=Movies["GENRE"].value_counts().unique()[0:9]
+w
+
+# now we check which is the most common Genre of movies produced
+
+genre_count= Movies['GENRE'].value_counts().head(10)
+genre_count
+
+# plot a pie chart
+plt.figure(figsize=(8,8))
+plt.pie(genre_count, labels=genre_count.index, autopct="%0.01f%%")
+plt.title('Top 10 Genre of Movies Produced')
+plt.show()
+
+orig_lang_conut = Movies['ORIG_LANG'].value_counts().head(10)
+orig_lang_conut
+
+plt.figure(figsize=(10, 10))
+
+plt.title("Language in Movies")
+
+plt.pie(orig_lang_conut, labels=orig_lang_conut.index,autopct="%0.0f%%")
+
+plt.show()
+
+score_conut = Movies['SCORE'].value_counts().head(10)
+
+plt.pie(score_conut, labels=score_conut.index,autopct="%0.0f%%")
+
+plt.show()
+
+# plot between no of movies in their orgin language
+plt.figure(figsize=(10,5))
+Movies.groupby("ORIG_LANG")["NAMES"].agg("count").plot(kind="bar")
+plt.title("No of Movies in Orign language")
+plt.ylabel("movie count")
+plt.show()
+
+Result :¶
+There are more number of movie released in "English" language as orgin
+Remaining count are less then 1000.
+
+# plot depend on score
+plt.figure(figsize=(10,5))
+Movies.groupby("SCORE")["NAMES"].agg("count").plot(kind="line")
+plt.title("score and their Movie count")
+plt.ylabel("movie count")
+plt.show()
+
+Result :
+
+The average movie score between 55 - 75
+
+#import the module for remove the "le6" at y axis and formate it
+
+from matplotlib.ticker import ScalarFormatter
+plt.figure(figsize=(18,9))
+colors = plt.cm.viridis(np.linspace(-3, 1, 60))
+plt.bar(Movies["SCORE"],Movies["REVENUE"],color=colors)
+
+plt.ticklabel_format(axis='y', style='plain')
+plt.title("Revenue depend on score value")
+plt.ylabel("Revenue")
+plt.show()
+
+Result :
+
+The high revenue movies are range between 75-85 score
+
+# plot depends  on country and movies
+plt.figure(figsize=(10,5))
+Movies.groupby("COUNTRY")["NAMES"].agg("count").plot(kind="bar",color="red")
+plt.title("No of movie Released in a country")
+plt.ylabel("Movie count")
+plt.show()
+
+Result :¶
+There are more movie release in "1) AUSTRALIA ( AU ) ---- 2) UNITED STATES( US )
+
+# plot the score  with orign language
+
+from matplotlib.ticker import ScalarFormatter
+plt.figure(figsize=(10,5))
+
+sns.barplot(Movies,x=Movies["ORIG_LANG"],y=Movies["SCORE"])
+plt.xticks(rotation=90)
+plt.title("orign language with max score")
+plt.ylabel("score")
+plt.show()
+
+Result :
+
+The average score for the orign language : it denote [ "Tamil, malayalam, Hungarian ] has less score value
+
+Movies.describe()
+
+**Movie Recommendation system**
+
+Movies.head()
+
+# importing basic library for movie recommendation
+import difflib
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+Movies['index'] = range(0, len(Movies))     # creating new column "index"
+
+Movies = Movies.set_index('index').reset_index() # move the column to begining of the dataset
+
+# select the  reqired column for find some patterns between each movies
+selected_features = ['GENRE',"ORIG_LANG"]
+print(selected_features)
+
+for feature in selected_features:
+    Movies[feature] =Movies[feature].fillna('')
+
+
+# combining all the 5 selected features
+
+combined_features = Movies['GENRE']+' '+Movies['OVERVIEW']
+
+# initialize the model
+vectorizer = TfidfVectorizer()
+
+# fit the data into the  model
+feature_vectors = vectorizer.fit_transform(combined_features)
+
+# getting the similarity scores using cosine similarity
+similarity = cosine_similarity(feature_vectors)
+
+# make the recommendation based on your movie which you like
+# get input of the movie_name
+
+# movie_name =input('Enter your favourite movie name : ')
+
+# here we define some default name  -----> otherwise you can get it from user
+movie_name = "Iron man"
+print('Enter your favourite movie name : Iron man')
+
+list_of_all_titles = Movies['NAMES'].tolist()       # get all movie name as list
+
+find_close_match = difflib.get_close_matches(movie_name, list_of_all_titles)  # find closest match --list of movie-- form oru given movie
+print(" similiar names  :  ",  find_close_match ,"\n\n")
+
+close_match = find_close_match[0]             # we take first one which is given by cloest movie
+
+index_of_the_movie = Movies[Movies.NAMES == close_match]['index'].values[0]   #  geting the index of the movie
+
+similarity_score = list(enumerate(similarity[index_of_the_movie]))            # generate the similarity score for the given movie
+
+sorted_similar_movies = sorted(similarity_score, key = lambda x:x[1], reverse = True)     # sort the score to get top 10 more similiarty movies
+
+print('Movies suggested for you : \n')
+
+i = 1
+
+# print the top 10 movies base on similiarity score
+
+for movie in sorted_similar_movies:
+    index = movie[0]
+    title_from_index = Movies[Movies.index==index]['NAMES'].values[0]
+    if (i<10):
+        print(i, '.',title_from_index)
+        i+=1
